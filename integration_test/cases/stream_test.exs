@@ -319,7 +319,7 @@ defmodule StreamTest do
         {:error, :oops} = P.transaction(conn, &P.rollback(&1, :oops))
         throw(:escape)
       end))
-    end) == {:error, :rollback}
+    end) == {:error, :oops}
 
     assert [
       connect: [_],

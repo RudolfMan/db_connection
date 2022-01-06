@@ -173,7 +173,7 @@ defmodule CloseTest do
       end) == {:error, :oops}
 
       assert P.close(conn, %Q{}, opts) == {:ok, :result}
-    end) == {:error, :rollback}
+    end) == {:error, :oops}
 
     assert [
       connect: [_],

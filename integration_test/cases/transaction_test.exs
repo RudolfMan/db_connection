@@ -135,8 +135,8 @@ defmodule TransactionTest do
         P.rollback(conn2, :oops)
       end) == {:error, :oops}
 
-      assert P.transaction(conn, fn(_) -> nil end) == {:error, :rollback}
-    end) == {:error, :rollback}
+      assert P.transaction(conn, fn(_) -> nil end) == {:error, :oops}
+    end) == {:error, :oops}
 
     assert P.transaction(pool, fn(_) -> :result end) == {:ok, :result}
 
@@ -192,14 +192,14 @@ defmodule TransactionTest do
     opts = [agent: agent, parent: self()]
     {:ok, pool} = P.start_link(opts)
 
-    assert P.transaction(pool, fn(conn) ->
+    assert P.transaction(pool, fn conn ->
       assert_raise RuntimeError, "oops",
-       fn() -> P.transaction(conn, fn(_) -> raise "oops" end) end
+       fn -> P.transaction(conn, fn _ -> raise "oops" end) end
 
-      assert P.transaction(conn, fn(_) -> nil end) ==  {:error, :rollback}
-    end) == {:error, :rollback}
+      assert P.transaction(conn, fn _ -> nil end) == {:error, %RuntimeError{message: "oops"}}
+    end) == {:error, %RuntimeError{message: "oops"}}
 
-    assert P.transaction(pool, fn(_) -> :result end) == {:ok, :result}
+    assert P.transaction(pool, fn _  -> :result end) == {:ok, :result}
 
     assert [
       connect: [_],
