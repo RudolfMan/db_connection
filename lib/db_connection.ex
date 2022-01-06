@@ -861,12 +861,12 @@ defmodule DBConnection do
       conclude(conn, result)
     catch
       :throw, {__MODULE__, ^conn_ref, reason} ->
-        fail(conn)
+        fail(conn, reason)
         {:error, reason}
 
       kind, reason ->
         stack = __STACKTRACE__
-        fail(conn)
+        fail(conn, reason)
         :erlang.raise(kind, reason, stack)
     else
       result ->
@@ -1567,24 +1567,25 @@ defmodule DBConnection do
     end
   end
 
-  defp fail(%DBConnection{pool_ref: pool_ref}) do
-    case Holder.status?(pool_ref, :ok) do
-      true -> Holder.put_status(pool_ref, :aborted)
-      false -> :ok
+  defp fail(%DBConnection{pool_ref: pool_ref}, reason) do
+    case Holder.status(pool_ref) do
+      :ok -> Holder.put_status(pool_ref, {:aborted, reason})
+      _ -> :ok
     end
   end
 
   defp conclude(%DBConnection{pool_ref: pool_ref, conn_ref: conn_ref}, result) do
-    case Holder.status?(pool_ref, :ok) do
-      true -> result
-      false -> throw({__MODULE__, conn_ref, :rollback})
+    case Holder.status(pool_ref) do
+      :ok -> result
+      {:aborted, reason} -> throw({__MODULE__, conn_ref, reason})
+      _ -> throw({__MODULE__, conn_ref, :rollback})
     end
   end
 
   defp reset(%DBConnection{pool_ref: pool_ref}) do
-    case Holder.status?(pool_ref, :aborted) do
-      true -> Holder.put_status(pool_ref, :ok)
-      false -> :ok
+    case Holder.status(pool_ref) do
+      {:aborted, _reason} -> Holder.put_status(pool_ref, :ok)
+      _ -> :ok
     end
   end
 

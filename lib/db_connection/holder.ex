@@ -145,7 +145,7 @@ defmodule DBConnection.Holder do
         msg = "connection is closed because of an error, disconnect or timeout"
         {:disconnect, DBConnection.ConnectionError.exception(msg), _state = :unused}
 
-      [conn(status: :aborted)] when type != :cleanup ->
+      [conn(status: {:aborted, _reason})] when type != :cleanup ->
         msg = "transaction rolling back"
         {:disconnect, DBConnection.ConnectionError.exception(msg), _state = :unused}
 
@@ -162,16 +162,16 @@ defmodule DBConnection.Holder do
     :ok
   end
 
-  @spec status?(pool_ref :: any, :ok | :aborted) :: boolean()
-  def status?(pool_ref(holder: holder), status) do
+  @spec status(pool_ref :: any) :: :ok | {:aborted, term}
+  def status(pool_ref(holder: holder)) do
     try do
-      :ets.lookup_element(holder, :conn, conn(:status) + 1) == status
+      :ets.lookup_element(holder, :conn, conn(:status) + 1)
     rescue
-      ArgumentError -> false
+      ArgumentError -> :error
     end
   end
 
-  @spec put_status(pool_ref :: any, :ok | :aborted) :: boolean()
+  @spec put_status(pool_ref :: any, :ok | {:aborted, term}) :: boolean()
   def put_status(pool_ref(holder: holder), status) do
     try do
       :ets.update_element(holder, :conn, [{conn(:status) + 1, status}])
